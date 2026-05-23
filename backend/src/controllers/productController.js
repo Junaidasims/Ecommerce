@@ -2,9 +2,7 @@ const { Product } = require('../models');
 
 exports.getAllProducts = async (req, res) => {
   try {
-    const products = await Product.findAll({
-      order: [['createdAt', 'DESC']]
-    });
+    const products = await Product.find().sort({ createdAt: -1 });
     res.json(products);
   } catch (err) {
     console.error('Get products error:', err.message);
@@ -14,7 +12,7 @@ exports.getAllProducts = async (req, res) => {
 
 exports.getProductById = async (req, res) => {
   try {
-    const product = await Product.findByPk(req.params.id);
+    const product = await Product.findById(req.params.id);
     if (!product) {
       return res.status(404).json({ message: 'Product not found' });
     }
@@ -51,21 +49,25 @@ exports.createProduct = async (req, res) => {
 exports.updateProduct = async (req, res) => {
   try {
     const { name, description, price, stock, image_url } = req.body;
-    const product = await Product.findByPk(req.params.id);
+    const product = await Product.findById(req.params.id);
 
     if (!product) {
       return res.status(404).json({ message: 'Product not found' });
     }
 
-    await product.update({
-      name: name !== undefined ? name : product.name,
-      description: description !== undefined ? description : product.description,
-      price: price !== undefined ? price : product.price,
-      stock: stock !== undefined ? stock : product.stock,
-      image_url: image_url !== undefined ? image_url : product.image_url,
-    });
+    const updatedProduct = await Product.findByIdAndUpdate(
+      req.params.id,
+      {
+        name: name !== undefined ? name : product.name,
+        description: description !== undefined ? description : product.description,
+        price: price !== undefined ? price : product.price,
+        stock: stock !== undefined ? stock : product.stock,
+        image_url: image_url !== undefined ? image_url : product.image_url,
+      },
+      { new: true }
+    );
 
-    res.json(product);
+    res.json(updatedProduct);
   } catch (err) {
     console.error('Update product error:', err.message);
     res.status(500).json({ message: 'Server error updating product' });
@@ -74,13 +76,13 @@ exports.updateProduct = async (req, res) => {
 
 exports.deleteProduct = async (req, res) => {
   try {
-    const product = await Product.findByPk(req.params.id);
+    const product = await Product.findById(req.params.id);
 
     if (!product) {
       return res.status(404).json({ message: 'Product not found' });
     }
 
-    await product.destroy();
+    await Product.findByIdAndDelete(req.params.id);
     res.json({ message: 'Product deleted successfully' });
   } catch (err) {
     console.error('Delete product error:', err.message);

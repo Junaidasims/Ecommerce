@@ -10,15 +10,9 @@ services:
         value: production
       - key: PORT
         value: 5000
-      - key: DB_HOST
+      - key: MONGODB_URI
         sync: false
-      - key: DB_PORT
-        value: 3306
-      - key: DB_USER
+      - key: FRONTEND_URLS
         sync: false
-      - key: DB_PASS
-        sync: false
-      - key: DB_NAME
-        value: ecom_db
       - key: JWT_SECRET
         generateValue: true

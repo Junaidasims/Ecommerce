@@ -1,15 +1,18 @@
 const bcrypt = require('bcryptjs');
-const { sequelize, User, Product } = require('../models');
+const { connectDB, User, Product } = require('../models');
+require('dotenv').config();
 
 const seedDatabase = async () => {
   try {
-    console.log('Connecting to database for seeding...');
-    await sequelize.authenticate();
-    
-    // Sync models
-    console.log('Force syncing models...');
-    await sequelize.sync({ force: true });
-    console.log('Database tables cleared and recreated.');
+    console.log('Connecting to MongoDB for seeding...');
+    await connectDB();
+    console.log('Connected to MongoDB successfully.');
+
+    // Clear existing data
+    console.log('Clearing existing data...');
+    await User.deleteMany({});
+    await Product.deleteMany({});
+    console.log('Database cleared.');
 
     // Create Users
     console.log('Creating users...');
@@ -77,13 +80,13 @@ const seedDatabase = async () => {
       }
     ];
 
-    await Product.bulkCreate(products);
+    await Product.insertMany(products);
     console.log('Seeded products database successfully!');
     
-    console.log('Seeding completed successfully!');
+    console.log('✓ Seeding completed successfully!');
     process.exit(0);
   } catch (error) {
-    console.error('Seeding database failed:', error);
+    console.error('✗ Seeding database failed:', error);
     process.exit(1);
   }
 };

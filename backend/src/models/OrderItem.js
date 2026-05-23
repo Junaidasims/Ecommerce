@@ -1,40 +1,23 @@
-const { DataTypes } = require('sequelize');
-const sequelize = require('../config/database');
+// OrderItem is now embedded in Order model
+// This file is kept for backward compatibility
+const mongoose = require('mongoose');
 
-const OrderItem = sequelize.define('OrderItem', {
-  id: {
-    type: DataTypes.INTEGER,
-    autoIncrement: true,
-    primaryKey: true,
-  },
-  order_id: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-  },
+const orderItemSchema = new mongoose.Schema({
   product_id: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Product',
+    required: true,
   },
   quantity: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-    defaultValue: 1,
-    validate: {
-      isInt: true,
-      min: 1,
-    },
+    type: Number,
+    required: true,
+    min: 1,
   },
   price: {
-    type: DataTypes.DECIMAL(10, 2),
-    allowNull: false,
-    validate: {
-      isDecimal: true,
-      min: 0,
-    },
+    type: Number,
+    required: true,
+    min: 0,
   },
-}, {
-  tableName: 'order_items',
-  timestamps: false,
 });
 
-module.exports = OrderItem;
+module.exports = orderItemSchema;

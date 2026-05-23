@@ -4,7 +4,7 @@ const { User } = require('../models');
 
 const generateToken = (user) => {
   return jwt.sign(
-    { id: user.id, username: user.username, role: user.role },
+    { id: user._id, username: user.username, role: user.role },
     process.env.JWT_SECRET || 'supersecretjwtkeyforlocaldevelopment12345',
     { expiresIn: '30d' }
   );
@@ -23,7 +23,7 @@ exports.register = async (req, res) => {
     }
 
     // Check if user exists
-    const existingUser = await User.findOne({ where: { username } });
+    const existingUser = await User.findOne({ username });
     if (existingUser) {
       return res.status(400).json({ message: 'Username already exists' });
     }
@@ -32,8 +32,7 @@ exports.register = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
-    // Create user. Force 'user' role unless it's explicitly specified (could restrict standard registers to user)
-    // For this e-commerce project, we will allow setting the role to make it easy to create admins, but usually admins are created out-of-band.
+    // Create user
     const userRole = role === 'admin' ? 'admin' : 'user';
 
     const user = await User.create({
@@ -47,7 +46,7 @@ exports.register = async (req, res) => {
     res.status(201).json({
       token,
       user: {
-        id: user.id,
+        id: user._id,
         username: user.username,
         role: user.role
       }
@@ -67,7 +66,7 @@ exports.login = async (req, res) => {
     }
 
     // Find user
-    const user = await User.findOne({ where: { username } });
+    const user = await User.findOne({ username });
     if (!user) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
@@ -83,7 +82,7 @@ exports.login = async (req, res) => {
     res.json({
       token,
       user: {
-        id: user.id,
+        id: user._id,
         username: user.username,
         role: user.role
       }

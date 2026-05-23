@@ -1,6 +1,6 @@
 # 🚀 Nexus Store — Full-Stack E-Commerce Platform
 
-A premium, full-stack, responsive e-commerce web application featuring a stunning glassmorphic dark UI, role-based access, JWT authentication, and MySQL database integration using Sequelize ORM.
+A premium, full-stack, responsive e-commerce web application featuring a stunning glassmorphic dark UI, role-based access, JWT authentication, and MongoDB database integration using Mongoose.
 
 ---
 
@@ -8,48 +8,42 @@ A premium, full-stack, responsive e-commerce web application featuring a stunnin
 
 - **Frontend**: React.js (Vite), React Router v6, Lucide Icons, Glassmorphic CSS Design.
 - **Backend**: Node.js, Express.js, REST APIs.
-- **Database**: MySQL, Sequelize ORM (with `mysql2` driver).
+- **Database**: MongoDB, Mongoose ODM.
 - **Authentication**: Stateless JSON Web Tokens (JWT) & `bcryptjs` password hashing.
 - **Deployment**:
   - **Frontend**: Vercel or Netlify (fully prepared with SPA rewrites).
   - **Backend**: Render, Railway, or Heroku.
-  - **MySQL**: Cloud-hosted MySQL (Railway, Aiven, or PlanetScale).
+  - **MongoDB**: Cloud-hosted MongoDB (MongoDB Atlas).
 
 ---
 
 ## 📊 Database Schema
 
-The database consists of the following highly optimized tables defined with Sequelize associations:
+The database consists of the following Collections defined with Mongoose schemas:
 
-1. **`users`**:
-   - `id`: Integer (Primary Key, Auto Increment)
-   - `username`: String (Unique, Indexed)
+1. **`User`**:
+   - `username`: String (Unique, Trimmed, Min length 3)
    - `password`: String (Hashed via bcrypt)
-   - `role`: Enum ('user', 'admin') (Default: 'user')
-   - `createdAt`, `updatedAt`: Timestamps
+   - `role`: String ('user', 'admin') (Default: 'user')
+   - Timestamps (`createdAt`, `updatedAt`)
 
-2. **`products`**:
-   - `id`: Integer (Primary Key, Auto Increment)
-   - `name`: String
-   - `description`: Text
-   - `price`: Decimal (10, 2)
-   - `stock`: Integer (Default: 0)
-   - `image_url`: Text (Default high-res tech placeholder)
-   - `createdAt`, `updatedAt`: Timestamps
+2. **`Product`**:
+   - `name`: String (Trimmed)
+   - `description`: String (Default: '')
+   - `price`: Number (Min: 0)
+   - `stock`: Number (Default: 0)
+   - `image_url`: String (Default high-res tech placeholder)
+   - Timestamps (`createdAt`, `updatedAt`)
 
-3. **`orders`**:
-   - `id`: Integer (Primary Key, Auto Increment)
-   - `user_id`: Integer (Foreign Key -> `users.id`)
-   - `total`: Decimal (10, 2)
-   - `status`: Enum ('pending', 'processing', 'shipped', 'delivered', 'cancelled')
-   - `created_at`, `updated_at`: Timestamps
-
-4. **`order_items`**:
-   - `id`: Integer (Primary Key, Auto Increment)
-   - `order_id`: Integer (Foreign Key -> `orders.id`, CASCADE delete)
-   - `product_id`: Integer (Foreign Key -> `products.id`)
-   - `quantity`: Integer
-   - `price`: Decimal (10, 2) (Preserves historical purchase prices)
+3. **`Order`**:
+   - `user_id`: ObjectId (Ref -> `User`)
+   - `items`: Array of Nested Items:
+     - `product_id`: ObjectId (Ref -> `Product`)
+     - `quantity`: Number (Min: 1)
+     - `price`: Number (Preserves historical purchase prices)
+   - `total`: Number (Min: 0)
+   - `status`: String ('pending', 'processing', 'shipped', 'delivered', 'cancelled') (Default: 'pending')
+   - Timestamps (`createdAt`, `updatedAt`)
 
 ---
 
@@ -57,33 +51,20 @@ The database consists of the following highly optimized tables defined with Sequ
 
 ### Prerequisites
 - [Node.js](https://nodejs.org/) installed (v18+)
-- [MySQL Server](https://dev.mysql.com/downloads/installer/) running locally (or a cloud MySQL connection)
+- [MongoDB Community Server](https://www.mongodb.com/try/download/community) installed and running locally
 
 ---
 
-### Step 1: Database Setup
-1. Launch your MySQL command line or client interface.
-2. Run the following command to create a new database schema:
-   ```sql
-   CREATE DATABASE ecom_db;
-   ```
-
----
-
-### Step 2: Backend Configuration & Execution
+### Step 1: Backend Configuration & Execution
 1. Navigate to the `backend/` folder.
 2. Create a `.env` file from the example:
    ```bash
    cp .env.example .env
    ```
-3. Open `.env` and fill in your database credentials:
+3. Open `.env` and fill in your configuration:
    ```env
    PORT=5000
-   DB_HOST=localhost
-   DB_PORT=3306
-   DB_USER=root
-   DB_PASS=your_mysql_password
-   DB_NAME=ecom_db
+   MONGODB_URI=mongodb://localhost:27017/ecom_db
    JWT_SECRET=supersecretjwtkeyforlocaldevelopment12345
    NODE_ENV=development
    ```
@@ -103,7 +84,7 @@ The database consists of the following highly optimized tables defined with Sequ
 
 ---
 
-### Step 3: Frontend Configuration & Execution
+### Step 2: Frontend Configuration & Execution
 1. Navigate to the `frontend/` folder.
 2. Install all frontend dependencies:
    ```bash
@@ -138,10 +119,10 @@ The database consists of the following highly optimized tables defined with Sequ
    - Enter `user` and `userpassword`.
    - Complete checkout by entering your mock delivery address and card details.
    - Click "Complete Order". The system will process transactions, securely decrement product stocks, and display an Order Confirmation card.
-   - Navigate to "My Orders" in the sticky navbar to review active status tracking.
+   - Navigate to the **Profile Dropdown** in the top-right corner and click **My Orders** to review active status tracking.
 3. **Admin Dashboard Controls**:
-   - Log out of your user account and log in using `admin` / `adminpassword`.
-   - Click **Admin** in the sticky navbar.
+   - Log out of your user account, open the Profile Dropdown, and log in using `admin` / `adminpassword`.
+   - Open the Profile Dropdown and click **Admin Control Center**.
    - **Operational Stats**: View live aggregate statistics like Total Revenue, Sales counts, catalog items, and pending list cues.
    - **Catalog CRUD**: Click "Manage Products". Run the dynamic modal forms to quickly Add, Edit (name, price, stock, images), or Delete marketplace items.
    - **Shipments Management**: Click "Process Orders". Expand order details to view line items. Select status options from the drop-down menu (e.g. from `Pending` to `Shipped` or `Delivered`) to immediately update client ledger feeds.
@@ -153,19 +134,22 @@ The database consists of the following highly optimized tables defined with Sequ
 
 Ready to deploy online? Follow these steps:
 
-### 1. MySQL Database (Cloud)
-- Create a free instance of MySQL on **Railway** or **Aiven MySQL**.
-- Retrieve the connection details: host, port, user, password, and database name.
-- Alternatively, if using SSL, uncomment the SSL block in `backend/src/config/database.js`.
+### 1. MongoDB Database (Cloud)
+- Create a free account on [MongoDB Atlas](https://www.mongodb.com/cloud/atlas).
+- Create a shared cluster (free tier).
+- Under Database Access, create a database user with read/write privileges.
+- Under Network Access, allow access from anywhere (`0.0.0.0/0`) since cloud hosting services (like Render) change IPs dynamically.
+- Retrieve your connection string (e.g., `mongodb+srv://<user>:<password>@cluster0.xxxx.mongodb.net/ecom_db?retryWrites=true&w=majority`).
 
 ### 2. Backend API (Render / Railway)
 - Push your codebase to a GitHub repository.
 - Link your repo on **Render** (as a Web Service) or **Railway**.
-- Set the start command to: `npm start`.
+- Set the build command to `npm install` and start command to: `npm start`.
 - Define **Environment Variables** in their settings panel:
-  - `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASS`, `DB_NAME` (pointing to your Cloud MySQL instance).
-  - `JWT_SECRET` (generate a secure random key).
-  - `NODE_ENV=production`.
+  - `MONGODB_URI` = (Your MongoDB Atlas connection string).
+  - `JWT_SECRET` = (Generate a secure random key).
+  - `NODE_ENV` = `production`.
+  - `FRONTEND_URLS` = (Optional, comma-separated list of allowed frontend domains. If not set, it defaults to a fail-safe mode allowing the requested origin).
 - Note down your deployed API live endpoint (e.g., `https://nexus-ecom-api.onrender.com`).
 
 ### 3. Frontend App (Vercel)
@@ -174,4 +158,4 @@ Ready to deploy online? Follow these steps:
 - Specify Build settings (default: `npm run build` using Vite is automatically detected).
 - Add the **Environment Variable**:
   - `VITE_API_URL` = (Your deployed backend API URL, without a trailing slash).
-- Deploy! Vercel will build the React bundles, leverage the `vercel.json` rewrite file to ensure SPA router pages don't 404, and provide a secure, HTTPS live URL!
+- Deploy! Vercel will build the React bundles, leverage the `vercel.json` SPA routing config to handle React Router client side routing, and provide a secure, HTTPS live URL!

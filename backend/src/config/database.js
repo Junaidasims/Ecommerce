@@ -1,29 +1,19 @@
-const { Sequelize } = require('sequelize');
+const mongoose = require('mongoose');
 require('dotenv').config();
 
-const dbHost = process.env.DB_HOST || 'localhost';
-const dbPort = process.env.DB_PORT || 3306;
-const dbUser = process.env.DB_USER || 'root';
-const dbPass = process.env.DB_PASS || '';
-const dbName = process.env.DB_NAME || 'ecom_db';
+const mongoUrl = process.env.MONGODB_URI || 'mongodb://localhost:27017/ecom_db';
 
-const sequelize = new Sequelize(dbName, dbUser, dbPass, {
-  host: dbHost,
-  port: dbPort,
-  dialect: 'mysql',
-  logging: false, // Set to console.log to see SQL queries in development
-  dialectOptions: {
-    // If you are using SSL (e.g. for cloud providers like PlanetScale), uncomment below
-    ssl: process.env.NODE_ENV === 'production' ? {
-      rejectUnauthorized: false
-    } : false
-  },
-  pool: {
-    max: 5,
-    min: 0,
-    acquire: 30000,
-    idle: 10000
+const connectDB = async () => {
+  try {
+    await mongoose.connect(mongoUrl, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+    });
+    console.log('MongoDB connected successfully');
+  } catch (error) {
+    console.error('MongoDB connection error:', error);
+    process.exit(1);
   }
-});
+};
 
-module.exports = sequelize;
+module.exports = { mongoose, connectDB };

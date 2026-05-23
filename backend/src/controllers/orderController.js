@@ -1,13 +1,11 @@
-const { sequelize, Order, OrderItem, Product, User } = require('../models');
+const { Order, Product, User } = require('../models');
 
 exports.createOrder = async (req, res) => {
-  const transaction = await sequelize.transaction();
   try {
     const { items } = req.body; // Array of { product_id, quantity }
-    const userId = req.user.id;
+    const userId = req.user.id; // req.user.id from JWT middleware
 
     if (!items || items.length === 0) {
-      await transaction.rollback();
       return res.status(400).json({ message: 'No items in order' });
     }
 
@@ -17,14 +15,12 @@ exports.createOrder = async (req, res) => {
 
     // Verify all products, calculate total, check stock
     for (const item of items) {
-      const product = await Product.findByPk(item.product_id, { transaction });
+      const product = await Product.findById(item.product_id);
       if (!product) {
-        await transaction.rollback();
         return res.status(404).json({ message: `Product with ID ${item.product_id} not found` });
       }
 
       if (product.stock < item.quantity) {
-        await transaction.rollback();
         return res.status(400).json({ 
           message: `Insufficient stock for product: ${product.name}. Available: ${product.stock}` 
         });
@@ -34,7 +30,7 @@ exports.createOrder = async (req, res) => {
       orderTotal += itemTotal;
 
       itemsToCreate.push({
-        product_id: product.id,
+        product_id: product._id,
         quantity: item.quantity,
         price: product.price // Save the current price
       });
@@ -45,42 +41,28 @@ exports.createOrder = async (req, res) => {
       });
     }
 
-    // Create the order
+    // Create the order with items
     const order = await Order.create({
       user_id: userId,
+      items: itemsToCreate,
       total: orderTotal,
       status: 'pending'
-    }, { transaction });
-
-    // Create order items mapped with order_id
-    const orderItems = itemsToCreate.map(item => ({
-      ...item,
-      order_id: order.id
-    }));
-
-    await OrderItem.bulkCreate(orderItems, { transaction });
+    });
 
     // Deduct stock for all products
     for (const update of productsToUpdate) {
-      await update.product.update({ stock: update.newStock }, { transaction });
+      await Product.findByIdAndUpdate(
+        update.product._id,
+        { stock: update.newStock },
+        { new: true }
+      );
     }
 
-    await transaction.commit();
-
-    // Return created order with items
-    const completedOrder = await Order.findByPk(order.id, {
-      include: [
-        {
-          model: OrderItem,
-          as: 'items',
-          include: [{ model: Product, as: 'product', attributes: ['name', 'image_url'] }]
-        }
-      ]
-    });
+    // Return created order with populated items
+    const completedOrder = await Order.findById(order._id).populate('items.product_id', 'name image_url');
 
     res.status(201).json(completedOrder);
   } catch (err) {
-    await transaction.rollback();
     console.error('Create order error:', err.message);
     res.status(500).json({ message: 'Server error creating order' });
   }
@@ -88,17 +70,9 @@ exports.createOrder = async (req, res) => {
 
 exports.getMyOrders = async (req, res) => {
   try {
-    const orders = await Order.findAll({
-      where: { user_id: req.user.id },
-      include: [
-        {
-          model: OrderItem,
-          as: 'items',
-          include: [{ model: Product, as: 'product', attributes: ['name', 'image_url'] }]
-        }
-      ],
-      order: [['created_at', 'DESC']]
-    });
+    const orders = await Order.find({ user_id: req.user.id })
+      .populate('items.product_id', 'name image_url')
+      .sort({ createdAt: -1 });
     res.json(orders);
   } catch (err) {
     console.error('Get my orders error:', err.message);
@@ -108,21 +82,10 @@ exports.getMyOrders = async (req, res) => {
 
 exports.getAllOrders = async (req, res) => {
   try {
-    const orders = await Order.findAll({
-      include: [
-        {
-          model: User,
-          as: 'user',
-          attributes: ['id', 'username']
-        },
-        {
-          model: OrderItem,
-          as: 'items',
-          include: [{ model: Product, as: 'product', attributes: ['name', 'image_url'] }]
-        }
-      ],
-      order: [['created_at', 'DESC']]
-    });
+    const orders = await Order.find()
+      .populate('user_id', 'username')
+      .populate('items.product_id', 'name image_url')
+      .sort({ createdAt: -1 });
     res.json(orders);
   } catch (err) {
     console.error('Get all orders error:', err.message);
@@ -139,24 +102,32 @@ exports.updateOrderStatus = async (req, res) => {
       return res.status(400).json({ message: 'Invalid or missing status' });
     }
 
-    const order = await Order.findByPk(req.params.id);
+    const order = await Order.findById(req.params.id);
     if (!order) {
       return res.status(404).json({ message: 'Order not found' });
     }
 
     // Optional: Restore stock if cancelled
     if (status === 'cancelled' && order.status !== 'cancelled') {
-      const items = await OrderItem.findAll({ where: { order_id: order.id } });
-      for (const item of items) {
-        const product = await Product.findByPk(item.product_id);
+      for (const item of order.items) {
+        const product = await Product.findById(item.product_id);
         if (product) {
-          await product.update({ stock: product.stock + item.quantity });
+          await Product.findByIdAndUpdate(
+            item.product_id,
+            { stock: product.stock + item.quantity },
+            { new: true }
+          );
         }
       }
     }
 
-    await order.update({ status });
-    res.json(order);
+    const updatedOrder = await Order.findByIdAndUpdate(
+      req.params.id,
+      { status },
+      { new: true }
+    ).populate('items.product_id', 'name image_url');
+
+    res.json(updatedOrder);
   } catch (err) {
     console.error('Update order status error:', err.message);
     res.status(500).json({ message: 'Server error updating order status' });

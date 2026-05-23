@@ -1,15 +1,29 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
-import { ShoppingCart, User, LogOut, Package, Shield, Layers } from 'lucide-react';
+import { ShoppingCart, User, LogOut, Package, Shield, Layers, ChevronDown } from 'lucide-react';
 
 const Navbar = () => {
   const { user, logout, isAdmin } = useAuth();
   const { getCartCount } = useCart();
   const navigate = useNavigate();
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleLogout = () => {
+    setDropdownOpen(false);
     logout();
     navigate('/login');
   };
@@ -67,20 +81,6 @@ const Navbar = () => {
           <NavLink to="/" style={navLinkStyle}>
             Products
           </NavLink>
-          
-          {user && (
-            <NavLink to="/orders" style={navLinkStyle}>
-              <Package size={18} />
-              My Orders
-            </NavLink>
-          )}
-
-          {isAdmin && (
-            <NavLink to="/admin" style={navLinkStyle}>
-              <Shield size={18} style={{ color: 'var(--accent-primary)' }} />
-              Admin
-            </NavLink>
-          )}
         </div>
 
         {/* User Actions */}
@@ -138,49 +138,167 @@ const Navbar = () => {
 
           {/* User Profile / Login */}
           {user ? (
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '1rem'
-            }}>
-              <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'flex-end',
-                lineHeight: 1.2
-              }}>
-                <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{user.username}</span>
-                <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }} className={`badge-${user.role}`}>
-                  {user.role}
-                </span>
-              </div>
-              <button 
-                onClick={handleLogout}
+            <div ref={dropdownRef} style={{ position: 'relative' }}>
+              <button
+                onClick={() => setDropdownOpen(!dropdownOpen)}
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  width: '40px',
-                  height: '40px',
-                  borderRadius: '50%',
-                  background: 'rgba(239, 68, 68, 0.1)',
-                  border: '1px solid rgba(239, 68, 68, 0.2)',
-                  color: '#ef4444',
+                  gap: '0.5rem',
+                  background: 'var(--bg-secondary)',
+                  border: '1px solid var(--glass-border)',
+                  color: 'var(--text-primary)',
+                  padding: '0.4rem 0.8rem',
+                  borderRadius: '20px',
                   cursor: 'pointer',
                   transition: 'var(--transition-fast)'
                 }}
-                title="Logout"
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(239, 68, 68, 0.2)';
-                  e.currentTarget.style.color = '#ffffff';
+                  e.currentTarget.style.borderColor = 'var(--accent-secondary)';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)';
-                  e.currentTarget.style.color = '#ef4444';
+                  e.currentTarget.style.borderColor = dropdownOpen ? 'var(--accent-secondary)' : 'var(--glass-border)';
                 }}
               >
-                <LogOut size={16} />
+                <div style={{
+                  width: '24px',
+                  height: '24px',
+                  borderRadius: '50%',
+                  background: 'var(--accent-primary)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'white',
+                  fontWeight: 700,
+                  fontSize: '0.8rem'
+                }}>
+                  {user.username.charAt(0).toUpperCase()}
+                </div>
+                <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{user.username}</span>
+                <ChevronDown size={14} style={{
+                  transform: dropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                  transition: 'transform var(--transition-fast)'
+                }} />
               </button>
+
+              {/* Dropdown Menu */}
+              {dropdownOpen && (
+                <div className="glass-panel animate-fade-in" style={{
+                  position: 'absolute',
+                  right: 0,
+                  top: 'calc(100% + 0.5rem)',
+                  width: '200px',
+                  padding: '0.5rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.25rem',
+                  zIndex: 200,
+                  boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5)'
+                }}>
+                  {/* User info header */}
+                  <div style={{
+                    padding: '0.5rem 0.75rem',
+                    borderBottom: '1px solid var(--glass-border)',
+                    marginBottom: '0.25rem'
+                  }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>Signed in as</span>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)', wordBreak: 'break-all' }}>{user.username}</span>
+                    <span className={`badge badge-${user.role}`} style={{ display: 'inline-block', fontSize: '0.65rem', marginTop: '0.25rem' }}>
+                      {user.role.toUpperCase()}
+                    </span>
+                  </div>
+
+                  {/* My Orders link */}
+                  <Link
+                    to="/orders"
+                    onClick={() => setDropdownOpen(false)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      padding: '0.5rem 0.75rem',
+                      borderRadius: '6px',
+                      color: 'var(--text-secondary)',
+                      fontSize: '0.85rem',
+                      transition: 'background var(--transition-fast)'
+                    }}
+                    className="dropdown-item"
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'var(--bg-tertiary)';
+                      e.currentTarget.style.color = 'var(--text-primary)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'transparent';
+                      e.currentTarget.style.color = 'var(--text-secondary)';
+                    }}
+                  >
+                    <Package size={16} />
+                    My Orders
+                  </Link>
+
+                  {/* Admin link if applicable */}
+                  {isAdmin && (
+                    <Link
+                      to="/admin"
+                      onClick={() => setDropdownOpen(false)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.5rem',
+                        padding: '0.5rem 0.75rem',
+                        borderRadius: '6px',
+                        color: 'var(--text-secondary)',
+                        fontSize: '0.85rem',
+                        transition: 'background var(--transition-fast)'
+                      }}
+                      className="dropdown-item"
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = 'var(--bg-tertiary)';
+                        e.currentTarget.style.color = 'var(--accent-primary)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'transparent';
+                        e.currentTarget.style.color = 'var(--text-secondary)';
+                      }}
+                    >
+                      <Shield size={16} />
+                      Admin Control
+                    </Link>
+                  )}
+
+                  {/* Divider */}
+                  <div style={{ height: '1px', background: 'var(--glass-border)', margin: '0.25rem 0' }} />
+
+                  {/* Logout Action */}
+                  <button
+                    onClick={handleLogout}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      width: '100%',
+                      textAlign: 'left',
+                      padding: '0.5rem 0.75rem',
+                      borderRadius: '6px',
+                      border: 'none',
+                      background: 'transparent',
+                      color: '#ef4444',
+                      fontSize: '0.85rem',
+                      cursor: 'pointer',
+                      transition: 'background var(--transition-fast)'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'transparent';
+                    }}
+                  >
+                    <LogOut size={16} />
+                    Logout
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <Link to="/login" className="btn btn-primary" style={{

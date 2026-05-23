@@ -1,22 +1,14 @@
 const app = require('./src/app');
-const { sequelize } = require('./src/models');
+const { connectDB } = require('./src/models');
 require('dotenv').config();
 
 const PORT = process.env.PORT || 5000;
 
 const startServer = async () => {
   try {
-    console.log('Connecting to the database...');
-    await sequelize.authenticate();
-    console.log('Database connection has been established successfully.');
-
-    // In development, you might want to alter table definitions automatically.
-    // In production, migrations are preferred. We'll use alter: true or standard sync
-    // to dynamically create schema.
-    const isDev = process.env.NODE_ENV === 'development';
-    console.log(`Syncing database (force/alter: false)...`);
-    await sequelize.sync({ force: false, alter: isDev });
-    console.log('Database synchronized.');
+    console.log('Connecting to MongoDB...');
+    await connectDB();
+    console.log('MongoDB connection established successfully.');
 
     app.listen(PORT, () => {
       console.log(`=========================================`);
